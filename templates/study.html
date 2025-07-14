@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block title %}学习 - {{ subject }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-6">
+    <div class="study-layout">
+        <!-- 章节列表 -->
+        <div class="study-sidebar study-sidebar--chapters">
+            <div class="card">
+                <div class="card-header card-header--simple">
+                    <h5 class="font-semibold">章节列表</h5>
+                    <button class="btn btn--xs btn-primary" onclick="generateAll()">
+                        <i class="fas fa-magic"></i>
+                        生成全部
+                    </button>
+                </div>
+                <div class="card-body card-body--compact">
+                    <div class="chapter-list">
+                        {% for chapter in knowledge_base.章节.keys() %}
+                        <div class="chapter-item" data-chapter="{{ chapter }}">
+                            <div class="chapter-item-content">
+                                <div class="chapter-item-main">
+                                    <i class="fas fa-book text-primary"></i>
+                                    <span class="chapter-title">{{ chapter }}</span>
+                                </div>
+                                <button class="btn btn--xs btn-outline-primary chapter-generate-btn" onclick="generateChapter('{{ chapter }}')">
+                                    <i class="fas fa-wand-magic-sparkles"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 知识点列表 -->
+        <div class="study-sidebar study-sidebar--concepts">
+            <div class="card">
+                <div class="card-header card-header--simple">
+                    <h5 class="font-semibold">知识点</h5>
+                </div>
+                <div class="card-body card-body--compact">
+                    <div id="conceptsList" class="concepts-list">
+                        <div class="text-center text-gray-500 p-4">
+                            <i class="fas fa-lightbulb text-2xl mb-2"></i>
+                            <p class="text-sm">请选择章节</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容展示区 -->
+        <div class="study-main">
+            <div class="card content-area">
+                <div class="card-header card-header--simple flex justify-between items-center">
+                    <h5 class="font-semibold">知识点讲解</h5>
+                    <button id="regenerateBtn" class="btn btn--sm btn-outline-primary" style="display: none;" onclick="regenerateCurrent()">
+                        <i class="fas fa-redo"></i>
+                        重新生成
+                    </button>
+                </div>
+                <div class="content-body">
+                    <div id="explanationContent">
+                        <div class="text-center text-gray-500 p-12">
+                            <i class="fas fa-graduation-cap text-5xl mb-4"></i>
+                            <h3 class="text-xl font-semibold mb-2">开始学习</h3>
+                            <p>请从左侧选择要学习的章节和知识点</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 生成进度模态框 -->
+<div class="modal fade" id="progressModal" tabindex="-1" aria-labelledby="progressModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="progressModalLabel">正在生成内容</h5>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="progressText" class="text-center">准备中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentChapter = '';
+    let currentConcept = '';
+    let currentType = '';
+    
+    // 获取知识点列表
+    async function loadConcepts(chapter) {
+        try {
+            const conceptsList = document.getElementById('conceptsList');
+            conceptsList.innerHTML = '<div class="loading"><div class="spinner"></div><span>加载知识点中...</span></div>';
+            
+            const response = await fetch(`/api/concepts?subject={{ subject }}&chapter=${encodeURIComponent(chapter)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            
+            conceptsList.innerHTML = '';
+            
+            if (data.error) {
+                conceptsList.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+                return;
+            }
+            
+            if ((data.mainConcepts && data.mainConcepts.length > 0) ||
+                (data.mainContents && data.mainContents.length > 0)) {
+
+                // 添加主要概念
+                if (data.mainConcepts && data.mainConcepts.length > 0) {
+                    const conceptsHeader = document.createElement('div');
+                    conceptsHeader.className = 'text-sm font-semibold text-gray-600';
+                    conceptsHeader.innerHTML = '<i class="fas fa-brain mr-2"></i>主要概念';
+                    conceptsList.appendChild(conceptsHeader);
+
+                    data.mainConcepts.forEach(concept => {
+                        const item = document.createElement('div');
+                        item.className = 'concept-item';
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-lightbulb text-primary"></i>
+                                <span>${concept}</span>
+                            </div>
+                        `;
+                        item.dataset.concept = concept;
+                        item.dataset.type = 'concept';
+                        conceptsList.appendChild(item);
+                    });
+                }
+
+                // 添加主要内容
+                if (data.mainContents && data.mainContents.length > 0) {
+                    const contentsHeader = document.createElement('div');
+                    contentsHeader.className = 'text-sm font-semibold text-gray-600';
+                    contentsHeader.innerHTML = '<i class="fas fa-list mr-2"></i>主要内容';
+                    conceptsList.appendChild(contentsHeader);
+
+                    data.mainContents.forEach(content => {
+                        const item = document.createElement('div');
+                        item.className = 'concept-item';
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-file-text text-success"></i>
+                                <span>${content}</span>
+                            </div>
+                        `;
+                        item.dataset.concept = content;
+                        item.dataset.type = 'content';
+                        conceptsList.appendChild(item);
+                    });
+                }
+            } else {
+                conceptsList.innerHTML = `
+                    <div class="text-center text-gray-500 p-4">
+                        <i class="fas fa-info-circle text-xl mb-2"></i>
+                        <p class="text-sm">该章节暂无知识点</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('加载知识点失败:', error);
+            document.getElementById('conceptsList').innerHTML = 
+                '<div class="alert alert-error">加载知识点失败</div>';
+        }
+    }
+    
+    // 获取AI讲解
+    async function loadExplanation(chapter, concept, type, forceRegenerate = false) {
+        try {
+            const explanationContent = document.getElementById('explanationContent');
+            explanationContent.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>正在生成AI讲解...</span>
+                </div>
+            `;
+            
+            const response = await fetch('/api/explain', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    chapter, 
+                    concept,
+                    type,
+                    force_regenerate: forceRegenerate
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.explanation) {
+                explanationContent.innerHTML = `
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-bold mb-3">${concept}</h2>
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="badge ${type === 'concept' ? 'bg-primary' : 'bg-success'}">
+                                ${type === 'concept' ? '主要概念' : '主要内容'}
+                            </span>
+                            ${data.from_cache ? '<span class="badge bg-info">来自缓存</span>' : '<span class="badge bg-success">AI生成</span>'}
+                        </div>
+                    </div>
+                    <div class="prose max-w-none mb-6">${data.explanation}</div>
+                    <div class="card">
+                        <div class="card-header card-header--simple">
+                            <h5 class="font-semibold">
+                                <i class="fas fa-question-circle mr-2"></i>
+                                有疑问？向AI提问
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-4">
+                                <textarea class="form-control" id="questionInput" rows="3" 
+                                          placeholder="有不理解的地方？在这里提出你的问题..."></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="askQuestion()">
+                                <i class="fas fa-paper-plane mr-2"></i>
+                                提交问题
+                            </button>
+                        </div>
+                    </div>
+                    <div id="answerArea" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header card-header--success">
+                                <h5 class="font-semibold">
+                                    <i class="fas fa-robot mr-2"></i>
+                                    AI回答
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="answerContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // 显示重新生成按钮
+                document.getElementById('regenerateBtn').style.display = 'block';
+            } else {
+                explanationContent.innerHTML = '<div class="alert alert-error">获取讲解失败</div>';
+            }
+        } catch (error) {
+            console.error('获取讲解失败:', error);
+            document.getElementById('explanationContent').innerHTML = 
+                '<div class="alert alert-error">获取讲解失败</div>';
+        }
+    }
+    
+    // 重新生成当前知识点
+    window.regenerateCurrent = function() {
+        if (currentChapter && currentConcept) {
+            loadExplanation(currentChapter, currentConcept, currentType, true);
+        }
+    };
+    
+    // 生成整个章节
+    window.generateChapter = async function(chapter) {
+        try {
+            showProgressModal('正在生成章节内容...');
+            const response = await fetch('/api/generate_chapter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject: '{{ subject }}',
+                    chapter: chapter
+                })
+            });
+
+            const data = await response.json();
+            if (data.message) {
+                hideProgressModal();
+                showNotification('章节内容生成完成！', 'success');
+                // 如果当前正在查看这个章节的某个知识点，刷新显示
+                if (currentChapter === chapter && currentConcept) {
+                    loadExplanation(currentChapter, currentConcept, currentType, false);
+                }
+            } else {
+                throw new Error(data.error || '生成失败');
+            }
+        } catch (error) {
+            console.error('生成章节失败:', error);
+            hideProgressModal();
+            showNotification('生成章节内容失败: ' + error.message, 'error');
+        }
+    };
+    
+    // 生成所有章节
+    window.generateAll = async function() {
+        try {
+            showProgressModal('正在生成所有章节内容...');
+            const response = await fetch('/api/generate_all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject: '{{ subject }}'
+                })
+            });
+
+            const data = await response.json();
+            if (data.message) {
+                hideProgressModal();
+                showNotification('所有章节内容生成完成！', 'success');
+                // 如果当前正在查看某个知识点，刷新显示
+                if (currentChapter && currentConcept) {
+                    loadExplanation(currentChapter, currentConcept, currentType, false);
+                }
+            } else {
+                throw new Error(data.error || '生成失败');
+            }
+        } catch (error) {
+            console.error('生成所有章节失败:', error);
+            hideProgressModal();
+            showNotification('生成所有章节内容失败: ' + error.message, 'error');
+        }
+    };
+    
+    // 显示进度模态框
+    function showProgressModal(message) {
+        const modal = new bootstrap.Modal(document.getElementById('progressModal'));
+        document.getElementById('progressText').textContent = message;
+        modal.show();
+    }
+    
+    // 隐藏进度模态框
+    function hideProgressModal() {
+        const modalElement = document.getElementById('progressModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+    }
+    
+    // 显示通知
+    function showNotification(message, type) {
+        if (window.UIUtils && typeof window.UIUtils.createNotification === 'function') {
+            window.UIUtils.createNotification(message, type, 3000);
+        } else {
+            alert(message);
+        }
+    }
+    
+    // 章节点击事件
+    document.querySelectorAll('.chapter-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            if (e.target.tagName === 'BUTTON') return; // 忽略按钮点击
+            
+            // 移除其他章节的激活状态
+            document.querySelectorAll('.chapter-item').forEach(i => {
+                i.classList.remove('active');
+            });
+            
+            // 激活当前章节
+            this.classList.add('active');
+            currentChapter = this.dataset.chapter;
+            
+            // 加载该章节的知识点
+            loadConcepts(currentChapter);
+            
+            // 清空讲解内容
+            document.getElementById('explanationContent').innerHTML = `
+                <div class="text-center text-gray-500 p-12">
+                    <i class="fas fa-lightbulb text-4xl mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">选择知识点</h3>
+                    <p>请从左侧选择要学习的知识点</p>
+                </div>
+            `;
+            
+            // 隐藏重新生成按钮
+            document.getElementById('regenerateBtn').style.display = 'none';
+        });
+    });
+    
+    // 知识点点击事件（使用事件委托）
+    document.getElementById('conceptsList').addEventListener('click', function(e) {
+        const conceptItem = e.target.closest('.concept-item');
+        if (conceptItem) {
+            // 移除其他知识点的激活状态
+            document.querySelectorAll('.concept-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 激活当前知识点
+            conceptItem.classList.add('active');
+            currentConcept = conceptItem.dataset.concept;
+            currentType = conceptItem.dataset.type;
+            
+            // 加载讲解
+            loadExplanation(currentChapter, currentConcept, currentType);
+        }
+    });
+    
+    // 提问功能
+    window.askQuestion = async function() {
+        const questionInput = document.getElementById('questionInput');
+        const question = questionInput.value.trim();
+        
+        if (!question) {
+            showNotification('请输入您的问题', 'warning');
+            return;
+        }
+        
+        try {
+            const answerArea = document.getElementById('answerArea');
+            const answerContent = document.getElementById('answerContent');
+            
+            answerArea.style.display = 'block';
+            answerContent.innerHTML = '<div class="loading"><div class="spinner"></div><span>AI正在思考...</span></div>';
+            
+            const response = await fetch('/api/ask_question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chapter: currentChapter,
+                    concept: currentConcept,
+                    question: question
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.answer) {
+                answerContent.innerHTML = `<div class="prose max-w-none">${data.answer}</div>`;
+                questionInput.value = '';
+            } else {
+                answerContent.innerHTML = '<div class="alert alert-error">获取答案失败</div>';
+            }
+        } catch (error) {
+            console.error('提问失败:', error);
+            document.getElementById('answerContent').innerHTML = 
+                '<div class="alert alert-error">提问失败</div>';
+        }
+    };
+});
+</script>
+{% endblock %}

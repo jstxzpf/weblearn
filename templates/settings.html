@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 通用学习考试复习系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>系统设置</h2>
+        
+        <!-- 学科管理部分 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">学科管理</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="newSubjectName" placeholder="输入新学科名称">
+                            <button class="btn btn-primary" onclick="addSubject()">添加学科</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>学科名称</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subjectsList">
+                            {% for subject in subjects %}
+                            <tr>
+                                <td>{{ subject }}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteSubject('{{ subject }}')">删除</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI模型设置部分 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">AI模型设置</h5>
+            </div>
+            <div class="card-body">
+                <form id="aiSettingsForm">
+                    <div class="mb-3">
+                        <label for="aiModel" class="form-label">选择AI模型</label>
+                        <select class="form-select" id="aiModel" name="ai_model">
+                            <option value="ollama">Ollama</option>
+                            <option value="aliyun">阿里云</option>
+                            <option value="tencent">腾讯云</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="modelName" class="form-label">模型名称</label>
+                        <input type="text" class="form-control" id="modelName" name="model_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="apiKey" class="form-label">API密钥</label>
+                        <input type="password" class="form-control" id="apiKey" name="api_key">
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 缓存管理部分 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">缓存管理</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-warning" onclick="clearCache()">清除所有缓存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 加载当前设置和初始化事件监听器
+    document.addEventListener('DOMContentLoaded', function() {
+        // 加载当前设置
+        fetch('/api/settings')
+            .then(response => response.json())
+            .then(settings => {
+                document.getElementById('aiModel').value = settings.ai_model || 'ollama';
+                document.getElementById('modelName').value = settings.model_name || '';
+                document.getElementById('apiKey').value = settings.api_key || '';
+            })
+            .catch(error => {
+                console.error('加载设置失败:', error);
+            });
+
+        // 保存AI设置
+        const aiSettingsForm = document.getElementById('aiSettingsForm');
+        if (aiSettingsForm) {
+            aiSettingsForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = {
+                    ai_model: document.getElementById('aiModel').value,
+                    model_name: document.getElementById('modelName').value,
+                    api_key: document.getElementById('apiKey').value
+                };
+
+                fetch('/api/settings/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('保存设置失败：' + data.error);
+                    } else {
+                        alert('设置已保存');
+                    }
+                })
+                .catch(error => {
+                    console.error('保存设置失败:', error);
+                    alert('保存设置失败：' + error.message);
+                });
+            });
+        }
+    });
+
+    // 添加学科
+    function addSubject() {
+        console.log('addSubject函数被调用');
+
+        const subjectNameInput = document.getElementById('newSubjectName');
+        if (!subjectNameInput) {
+            console.error('找不到newSubjectName输入框');
+            alert('页面元素错误，请刷新页面重试');
+            return;
+        }
+
+        const subjectName = subjectNameInput.value.trim();
+        console.log('学科名称:', subjectName);
+
+        if (!subjectName) {
+            alert('请输入学科名称');
+            return;
+        }
+
+        console.log('发送添加学科请求...');
+        fetch('/api/subjects', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name: subjectName })
+        })
+        .then(response => {
+            console.log('响应状态:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('响应数据:', data);
+            if (data.error) {
+                alert('添加学科失败：' + data.error);
+            } else {
+                alert('添加学科成功：' + data.message);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('添加学科请求失败:', error);
+            alert('添加学科失败：' + error.message);
+        });
+    }
+
+    // 删除学科
+    function deleteSubject(subjectName) {
+        if (!confirm(`确定要删除学科"${subjectName}"吗？此操作不可恢复。`)) {
+            return;
+        }
+
+        fetch(`/api/subjects/${subjectName}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('删除学科失败：' + data.error);
+            } else {
+                location.reload();
+            }
+        });
+    }
+
+    // 清除缓存
+    function clearCache() {
+        if (!confirm('确定要清除所有缓存吗？')) {
+            return;
+        }
+
+        fetch('/api/cache/clear', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('清除缓存失败：' + data.error);
+            } else {
+                alert('缓存已清除');
+            }
+        });
+    }
+</script>
+{% endblock %} 

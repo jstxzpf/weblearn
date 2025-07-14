@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="description" content="智能学习管理系统 - 高效的在线学习平台">
+    <meta name="keywords" content="学习管理,在线教育,智能学习">
+    <meta name="author" content="智能学习管理系统">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- 性能优化 -->
+    <meta name="robots" content="index, follow">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+    <title>{% block title %}智能学习管理系统{% endblock %}</title>
+
+    <!-- 关键CSS预加载 -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"></noscript>
+
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+    <!-- 重构版样式表 -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    <!-- 浏览器兼容性检测和polyfills -->
+    <script>
+        // 基础浏览器检测
+        (function() {
+            var ua = navigator.userAgent;
+            var isIE = /msie|trident/i.test(ua);
+            var isOldBrowser = isIE || /chrome\/[1-5][0-9]|firefox\/[1-5][0-9]|safari\/[1-9]/i.test(ua);
+
+            if (isOldBrowser) {
+                document.documentElement.className += ' old-browser';
+            }
+
+            // CSS变量支持检测
+            if (!window.CSS || !CSS.supports || !CSS.supports('color', 'var(--fake-var)')) {
+                document.documentElement.className += ' no-css-variables';
+            }
+        })();
+    </script>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- 重构版导航栏 -->
+    <nav class="navbar">
+        <div class="container flex justify-between items-center">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-graduation-cap"></i>
+                智能学习管理系统
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home"></i>首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('study', subject=subject) if subject else url_for('study') }}">
+                            <i class="fas fa-book-open"></i>学习
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('exam', subject=subject) if subject else url_for('exam') }}">
+                            <i class="fas fa-file-alt"></i>考试
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('exam_records') }}">
+                            <i class="fas fa-history"></i>考试记录
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('review', subject=subject) if subject else url_for('review') }}">
+                            <i class="fas fa-check-circle"></i>试卷审批
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('settings_page') }}">
+                            <i class="fas fa-cog"></i>设置
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="navbar-nav">
+                    <select class="form-select" id="subjectSelect" onchange="changeSubject(this.value)">
+                        <option value="">选择学科</option>
+                        {% for s in subjects %}
+                        <option value="{{ s }}" {% if s == subject %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 性能优化的JavaScript加载 -->
+    <!-- 预加载关键脚本 -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" as="script">
+    <link rel="preload" href="{{ url_for('static', filename='js/performance.js') }}" as="script">
+    <link rel="preload" href="{{ url_for('static', filename='js/api-client.js') }}" as="script">
+    <link rel="preload" href="{{ url_for('static', filename='js/main.js') }}" as="script">
+
+    <!-- 异步加载非关键脚本 -->
+    <script async src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 关键脚本同步加载 -->
+    <script src="{{ url_for('static', filename='js/performance.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/api-client.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Service Worker注册 - 异步加载 -->
+    <script async src="{{ url_for('static', filename='js/sw-register.js') }}"></script>
+
+    <script>
+        // 性能优化的页面初始化
+        (function() {
+            'use strict';
+
+            // 使用防抖优化的初始化函数
+            function initializeApp() {
+                // 初始化学科选择
+                const subjectSelect = document.getElementById('subjectSelect');
+                const currentSubject = '{{ subject }}';
+
+                if (currentSubject && subjectSelect) {
+                    subjectSelect.value = currentSubject;
+                }
+
+                // 初始化性能监控
+                if (window.PerformanceMonitor) {
+                    PerformanceMonitor.init();
+                }
+
+                // 初始化懒加载
+                if (window.PerformanceUtils) {
+                    PerformanceUtils.lazyLoadImages();
+                }
+            }
+
+            // 处理学科切换 - 优化版本
+            window.changeSubject = function(subject) {
+                if (!subject) return;
+
+                // 显示加载状态
+                const selectElement = document.getElementById('subjectSelect');
+                if (selectElement) {
+                    selectElement.disabled = true;
+                }
+
+                try {
+                    // 获取当前页面路径
+                    const currentPath = window.location.pathname;
+
+                    // 如果是首页，直接跳转到学习页面
+                    if (currentPath === '/') {
+                        window.location.href = `/study?subject=${encodeURIComponent(subject)}`;
+                        return;
+                    }
+
+                    // 更新URL中的subject参数
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('subject', subject);
+                    window.location.href = url.toString();
+                } catch (error) {
+                    console.error('切换学科失败:', error);
+                    if (selectElement) {
+                        selectElement.disabled = false;
+                    }
+                }
+            };
+
+            // 优化的DOM加载检测
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeApp);
+            } else {
+                // DOM已经加载完成
+                if (window.requestAnimationFrame) {
+                    requestAnimationFrame(initializeApp);
+                } else {
+                    setTimeout(initializeApp, 0);
+                }
+            }
+
+            // 页面可见性API优化
+            if ('visibilityState' in document) {
+                document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'visible') {
+                        // 页面变为可见时，检查是否需要刷新数据
+                        if (window.apiClient && typeof window.apiClient.clearCache === 'function') {
+                            // 清除过期缓存
+                            setTimeout(() => window.apiClient.clearCache(), 1000);
+                        }
+                    }
+                });
+            }
+
+            // 错误处理
+            window.addEventListener('error', function(event) {
+                console.error('页面错误:', event.error);
+                // 可以发送错误报告到服务器
+            });
+
+            // 未处理的Promise错误
+            window.addEventListener('unhandledrejection', function(event) {
+                console.error('未处理的Promise错误:', event.reason);
+                // 可以发送错误报告到服务器
+            });
+
+        })();
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

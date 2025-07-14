@@ -1,0 +1,77 @@
+{
+  "科目": "Excel函数详解",
+  "章节": {
+    "第一章 基础概念": {
+      "mainConcepts": [
+        "工作表和单元格",
+        "公式与引用",
+        "常用函数"
+      ],
+      "mainContents": [
+        "了解工作表结构",
+        "理解相对、绝对和混合引用",
+        "掌握SUM, AVERAGE, COUNT等基础函数"
+      ]
+    },
+    "第二章 核心功能": {
+      "mainConcepts": [
+        "逻辑运算",
+        "查找匹配",
+        "日期与时间处理"
+      ],
+      "mainContents": [
+        "使用IF判断逻辑表达式",
+        "利用VLOOKUP实现数据查找",
+        "DATE和TIME的运用"
+      ]
+    },
+    "第三章 数据管理": {
+      "mainConcepts": [
+        "排序筛选",
+        "条件格式",
+        "数据验证"
+      ],
+      "mainContents": [
+        "掌握SORT和FILTER函数",
+        "设置条件格式突出显示关键数据",
+        "使用DATAVALIDATION防止输入错误"
+      ]
+    },
+    "第四章 数据分析": {
+      "mainConcepts": [
+        "统计分析",
+        "文本处理",
+        "数组公式"
+      ],
+      "mainContents": [
+        "应用AVERAGEIFS, COUNTIFS进行复杂计算",
+        "运用TEXT和SEARCH等函数处理字符串",
+        "利用数组公式解决多变量问题"
+      ]
+    },
+    "第五章 高级功能": {
+      "mainConcepts": [
+        "宏录制与编写",
+        "自定义函数",
+        "数据分析工具包"
+      ],
+      "mainContents": [
+        "掌握基础VBA代码以自动化任务",
+        "学会在Excel中添加自己的UDF",
+        "使用DataAnalysisToolpak进行统计分析"
+      ]
+    },
+    "第六章 数据可视化": {
+      "mainConcepts": [
+        "图表制作",
+        "数据透视表",
+        "条件格式与图标集"
+      ],
+      "mainContents": [
+        "利用CHARTFUNCTIONS创建各种图表类型",
+        "掌握PivotTables的高级应用技巧",
+        "使用ConditionalFormatting以直观展示数据"
+      ]
+    }
+  }
+}

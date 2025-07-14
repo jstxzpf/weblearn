@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}考试记录{% endblock %}
+
+{% block content %}
+<div class="container mt-6">
+    <div class="card">
+        <div class="card-header card-header--simple">
+            <div class="flex justify-between items-center">
+                <h5 class="font-semibold">
+                    <i class="fas fa-history mr-2"></i>
+                    考试记录
+                </h5>
+                <button class="btn btn--sm btn-outline-primary" onclick="refreshRecords()">
+                    <i class="fas fa-sync-alt mr-1"></i>
+                    刷新
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="recordsContainer">
+                <div class="text-center p-8">
+                    <div class="spinner"></div>
+                    <p class="mt-4 text-gray-600">正在加载考试记录...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 考试记录详情模态框 -->
+<div class="modal fade" id="recordDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt mr-2"></i>
+                    考试记录详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="recordDetailContent">
+                    <!-- 详情内容将通过JavaScript动态填充 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadExamRecords();
+});
+
+async function loadExamRecords() {
+    try {
+        const response = await fetch('/api/exam_records');
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        displayRecords(data.records);
+        
+    } catch (error) {
+        console.error('加载考试记录失败:', error);
+        document.getElementById('recordsContainer').innerHTML = `
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                加载考试记录失败: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function displayRecords(records) {
+    const container = document.getElementById('recordsContainer');
+    
+    if (!records || records.length === 0) {
+        container.innerHTML = `
+            <div class="text-center p-8">
+                <i class="fas fa-inbox text-5xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600 mb-2">暂无考试记录</h3>
+                <p class="text-gray-500">完成考试后，记录将显示在这里</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="records-table">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>学生姓名</th>
+                            <th>试卷名称</th>
+                            <th>学科</th>
+                            <th>考试时间</th>
+                            <th>得分</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    records.forEach(record => {
+        const startTime = new Date(record.start_time).toLocaleString('zh-CN');
+        const endTime = record.end_time ? new Date(record.end_time).toLocaleString('zh-CN') : '未完成';
+        const percentage = record.percentage || 0;
+        
+        let statusBadge = '';
+        let statusClass = '';
+        
+        switch (record.status) {
+            case 'completed':
+                statusBadge = '已完成';
+                statusClass = 'bg-success';
+                break;
+            case 'in_progress':
+                statusBadge = '进行中';
+                statusClass = 'bg-warning';
+                break;
+            default:
+                statusBadge = '未知';
+                statusClass = 'bg-gray-500';
+        }
+        
+        let gradeClass = 'text-gray-600';
+        if (percentage >= 90) gradeClass = 'text-success';
+        else if (percentage >= 80) gradeClass = 'text-info';
+        else if (percentage >= 70) gradeClass = 'text-warning';
+        else if (percentage >= 60) gradeClass = 'text-warning';
+        else if (percentage > 0) gradeClass = 'text-error';
+        
+        html += `
+            <tr>
+                <td>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-user-circle text-gray-400"></i>
+                        <span class="font-medium">${record.student_name}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="font-medium">${record.exam_title}</div>
+                </td>
+                <td>
+                    <span class="badge bg-primary">${record.subject}</span>
+                </td>
+                <td>
+                    <div class="text-sm">
+                        <div>开始: ${startTime}</div>
+                        ${record.end_time ? `<div class="text-gray-500">结束: ${endTime}</div>` : ''}
+                    </div>
+                </td>
+                <td>
+                    <div class="text-center">
+                        <div class="text-lg font-bold ${gradeClass}">
+                            ${record.total_score}/${record.full_score}
+                        </div>
+                        <div class="text-sm text-gray-500">${percentage.toFixed(1)}%</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge ${statusClass}">${statusBadge}</span>
+                </td>
+                <td>
+                    <button class="btn btn--xs btn-outline-primary" 
+                            onclick="viewRecordDetail('${record.session_id}')">
+                        <i class="fas fa-eye mr-1"></i>
+                        查看详情
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+async function viewRecordDetail(sessionId) {
+    try {
+        const response = await fetch(`/api/exam_record/${sessionId}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        displayRecordDetail(data);
+        
+        const modal = new bootstrap.Modal(document.getElementById('recordDetailModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('加载考试记录详情失败:', error);
+        showNotification('加载考试记录详情失败: ' + error.message, 'error');
+    }
+}
+
+function displayRecordDetail(record) {
+    const container = document.getElementById('recordDetailContent');
+    const scoreResult = record.score_result || {};
+    const examData = record.exam_data || {};
+    
+    const startTime = new Date(record.start_time).toLocaleString('zh-CN');
+    const endTime = record.end_time ? new Date(record.end_time).toLocaleString('zh-CN') : '未完成';
+    const duration = record.end_time ? 
+        Math.round((new Date(record.end_time) - new Date(record.start_time)) / 1000 / 60) : 0;
+    
+    let html = `
+        <div class="record-summary mb-6">
+            <div class="grid grid--2 gap-6">
+                <div>
+                    <h6 class="font-semibold mb-3">基本信息</h6>
+                    <div class="space-y-2 text-sm">
+                        <div><strong>学生姓名:</strong> ${record.student_name}</div>
+                        <div><strong>试卷名称:</strong> ${examData.title || '未知'}</div>
+                        <div><strong>学科:</strong> ${examData.subject || '未知'}</div>
+                        <div><strong>开始时间:</strong> ${startTime}</div>
+                        <div><strong>结束时间:</strong> ${endTime}</div>
+                        ${duration > 0 ? `<div><strong>用时:</strong> ${duration} 分钟</div>` : ''}
+                    </div>
+                </div>
+                <div>
+                    <h6 class="font-semibold mb-3">成绩统计</h6>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-primary mb-2">
+                            ${scoreResult.total_score || 0}/${scoreResult.full_score || 0}
+                        </div>
+                        <div class="text-xl text-gray-600 mb-2">${(scoreResult.percentage || 0).toFixed(1)}%</div>
+                        <div class="badge ${getGradeBadgeClass(scoreResult.percentage || 0)}">
+                            ${getGradeText(scoreResult.percentage || 0)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="question-details">
+            <h6 class="font-semibold mb-3">答题详情</h6>
+            <div class="space-y-3">
+    `;
+    
+    if (scoreResult.question_results && scoreResult.question_results.length > 0) {
+        scoreResult.question_results.forEach((result, index) => {
+            html += `
+                <div class="question-result p-3 border rounded-lg ${result.is_correct ? 'border-success bg-success-50' : 'border-error bg-error-50'}">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-medium">第${index + 1}题</span>
+                        <div class="flex items-center gap-2">
+                            <span class="badge ${result.is_correct ? 'bg-success' : 'bg-error'}">
+                                ${result.earned_score}/${result.full_score}分
+                            </span>
+                            <i class="fas ${result.is_correct ? 'fa-check-circle text-success' : 'fa-times-circle text-error'}"></i>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-700 mb-2">
+                        <strong>题目:</strong> ${result.question}
+                    </div>
+                    <div class="text-sm">
+                        <div class="mb-1">
+                            <strong>学生答案:</strong>
+                            <span class="${result.is_correct ? 'text-success' : 'text-error'}">
+                                ${result.user_answer || '未作答'}
+                            </span>
+                        </div>
+                        <div>
+                            <strong>正确答案:</strong>
+                            <span class="text-success">${result.correct_answer}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        html += '<div class="text-center text-gray-500 p-4">暂无答题详情</div>';
+    }
+    
+    html += '</div></div>';
+    
+    container.innerHTML = html;
+}
+
+function getGradeBadgeClass(percentage) {
+    if (percentage >= 90) return 'bg-success';
+    if (percentage >= 80) return 'bg-info';
+    if (percentage >= 70) return 'bg-warning';
+    if (percentage >= 60) return 'bg-warning';
+    return 'bg-error';
+}
+
+function getGradeText(percentage) {
+    if (percentage >= 90) return '优秀';
+    if (percentage >= 80) return '良好';
+    if (percentage >= 70) return '中等';
+    if (percentage >= 60) return '及格';
+    return '不及格';
+}
+
+function refreshRecords() {
+    document.getElementById('recordsContainer').innerHTML = `
+        <div class="text-center p-8">
+            <div class="spinner"></div>
+            <p class="mt-4 text-gray-600">正在刷新考试记录...</p>
+        </div>
+    `;
+    loadExamRecords();
+}
+
+function showNotification(message, type) {
+    if (window.UIUtils && typeof window.UIUtils.createNotification === 'function') {
+        window.UIUtils.createNotification(message, type, 3000);
+    } else {
+        alert(message);
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+flask
+requests
+werkzeug
+bleach
+python-dotenv
+gunicorn
+filelock
+markupsafe
+openai>=1.0.0 

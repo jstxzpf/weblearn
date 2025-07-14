@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}智能学习管理系统{% endblock %}
+
+{% block content %}
+<!-- 优化版首页布局 -->
+<div class="container-fluid mt-6">
+    <div class="home-layout">
+        <!-- 左侧：欢迎区域 -->
+        <div class="home-welcome">
+            <div class="card">
+                <div class="card-body">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h1 class="welcome-title">智能学习管理系统</h1>
+                        <p class="welcome-subtitle">基于AI技术的个性化学习平台</p>
+
+                        <div class="welcome-features">
+                            <div class="feature-item">
+                                <i class="fas fa-robot"></i>
+                                <span>AI智能助手</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-chart-line"></i>
+                                <span>学习分析</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-users"></i>
+                                <span>个性化学习</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>多端同步</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间：学科选择区域 -->
+        <div class="home-subjects">
+            <div class="card">
+                <div class="card-header card-header--simple">
+                    <h5 class="font-semibold">学科选择</h5>
+                    <div class="subjects-count">
+                        <span class="badge bg-primary">{{ subjects|length }}个学科</span>
+                    </div>
+                </div>
+                <div class="card-body card-body--compact">
+                    {% if subjects %}
+                    <div class="subjects-grid">
+                        {% for s in subjects %}
+                        <div class="subject-card" onclick="window.location.href='/study?subject={{ s|urlencode }}'">
+                            <div class="subject-card-content">
+                                <div class="subject-icon">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                <div class="subject-info">
+                                    <h6 class="subject-name">{{ s }}</h6>
+                                    <p class="subject-desc">开始学习</p>
+                                </div>
+                                <div class="subject-arrow">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- 添加学科卡片 -->
+                        <div class="subject-card subject-card--add" onclick="showAddSubjectModal()">
+                            <div class="subject-card-content">
+                                <div class="subject-icon">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                                <div class="subject-info">
+                                    <h6 class="subject-name">添加学科</h6>
+                                    <p class="subject-desc">创建新学科</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-graduation-cap text-4xl mb-3 text-gray-400"></i>
+                        <p class="text-gray-500 mb-4">暂无可用学科</p>
+                        <button class="btn btn-primary" onclick="showAddSubjectModal()">
+                            <i class="fas fa-plus"></i>
+                            添加第一个学科
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：功能区域 -->
+        <div class="home-functions">
+            {% if subject %}
+            <div class="card">
+                <div class="card-header card-header--simple">
+                    <h5 class="font-semibold">当前学科功能</h5>
+                    <span class="badge bg-success">{{ subject }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="function-grid">
+                        <div class="function-card" onclick="window.location.href='{{ url_for('study', subject=subject) }}'">
+                            <div class="function-icon">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                            <div class="function-content">
+                                <h6 class="function-title">智能学习</h6>
+                                <p class="function-desc">AI驱动的个性化学习体验</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="window.location.href='{{ url_for('exam', subject=subject) }}'">
+                            <div class="function-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="function-content">
+                                <h6 class="function-title">智能考试</h6>
+                                <p class="function-desc">AI自动生成个性化试卷</p>
+                            </div>
+                        </div>
+
+                        <div class="function-card" onclick="window.location.href='{{ url_for('review', subject=subject) }}'">
+                            <div class="function-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="function-content">
+                                <h6 class="function-title">智能批改</h6>
+                                <p class="function-desc">AI自动批改并提供建议</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-header card-header--simple">
+                    <h5 class="font-semibold">系统功能</h5>
+                </div>
+                <div class="card-body">
+                    <div class="system-info">
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="info-content">
+                                <h6>AI智能讲解</h6>
+                                <p>深度解析每个知识点</p>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="info-content">
+                                <h6>学习分析</h6>
+                                <p>详细的学习数据分析</p>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="info-content">
+                                <h6>智能出题</h6>
+                                <p>多种题型组合检验</p>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="info-content">
+                                <h6>自动批改</h6>
+                                <p>提供详细分析建议</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 统计信息区域 -->
+<div class="container mt-8">
+    <div class="card">
+        <div class="card-body">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ subjects|length }}</div>
+                    <div class="stat-label">可用学科</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">AI</div>
+                    <div class="stat-label">智能驱动</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">24/7</div>
+                    <div class="stat-label">在线服务</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">个性化</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加学科模态框 -->
+<div class="modal fade" id="addSubjectModal" tabindex="-1" aria-labelledby="addSubjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSubjectModalLabel">
+                    <i class="fas fa-plus-circle"></i>
+                    添加新学科
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-3">
+                    <label for="subjectNameInput" class="form-label">学科名称</label>
+                    <input type="text" class="form-control" id="subjectNameInput" placeholder="请输入学科名称" maxlength="50">
+                    <div class="form-text">例如：数据库原理、高等数学、英语等</div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>提示：</strong>添加学科后，系统将自动使用AI生成该学科的知识库内容，包括章节结构和知识点。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addSubject()">
+                    <i class="fas fa-plus"></i>
+                    添加学科
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 进度模态框 -->
+<div class="modal fade" id="progressModal" tabindex="-1" aria-labelledby="progressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 id="progressText">正在处理...</h5>
+                <p class="text-muted mb-0">请稍候，这可能需要几分钟时间</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 显示添加学科模态框
+function showAddSubjectModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addSubjectModal'));
+    modal.show();
+
+    // 清空输入框
+    document.getElementById('subjectNameInput').value = '';
+
+    // 聚焦到输入框
+    setTimeout(() => {
+        document.getElementById('subjectNameInput').focus();
+    }, 500);
+}
+
+// 添加学科
+function addSubject() {
+    const subjectNameInput = document.getElementById('subjectNameInput');
+    const subjectName = subjectNameInput.value.trim();
+
+    if (!subjectName) {
+        alert('请输入学科名称');
+        subjectNameInput.focus();
+        return;
+    }
+
+    // 隐藏添加模态框
+    const addModal = bootstrap.Modal.getInstance(document.getElementById('addSubjectModal'));
+    addModal.hide();
+
+    // 显示进度模态框
+    const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+    document.getElementById('progressText').textContent = `正在创建学科"${subjectName}"...`;
+    progressModal.show();
+
+    // 发送请求
+    fetch('/api/subjects', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: subjectName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // 隐藏进度模态框
+        progressModal.hide();
+
+        if (data.error) {
+            alert('添加学科失败：' + data.error);
+        } else {
+            alert('添加学科成功！系统已自动生成知识库内容。');
+            // 刷新页面以显示新学科
+            window.location.reload();
+        }
+    })
+    .catch(error => {
+        // 隐藏进度模态框
+        progressModal.hide();
+        console.error('添加学科请求失败:', error);
+        alert('添加学科失败：' + error.message);
+    });
+}
+
+// 支持回车键提交
+document.addEventListener('DOMContentLoaded', function() {
+    const subjectNameInput = document.getElementById('subjectNameInput');
+    if (subjectNameInput) {
+        subjectNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addSubject();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 首页专用样式 */
+.home-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px 1fr;
+    gap: var(--space-6);
+    min-height: calc(100vh - 120px);
+}
+
+/* 欢迎区域 */
+.home-welcome .card {
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+    border: 1px solid var(--primary-200);
+}
+
+.welcome-content {
+    text-align: center;
+    padding: var(--space-6);
+}
+
+.welcome-icon {
+    font-size: 4rem;
+    color: var(--primary-600);
+    margin-bottom: var(--space-4);
+}
+
+.welcome-title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--space-2);
+    line-height: 1.2;
+}
+
+.welcome-subtitle {
+    font-size: var(--text-base);
+    color: var(--gray-600);
+    margin-bottom: var(--space-6);
+}
+
+.welcome-features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    background: white;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--gray-700);
+    box-shadow: var(--shadow-sm);
+}
+
+.feature-item i {
+    color: var(--primary-500);
+    font-size: var(--text-base);
+}
+
+/* 学科选择区域 */
+.home-subjects .card {
+    height: 100%;
+}
+
+.subjects-count {
+    display: flex;
+    align-items: center;
+}
+
+.subjects-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.subject-card {
+    padding: var(--space-3);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    cursor: pointer;
+    transition: all var(--duration-200) var(--ease-out);
+}
+
+.subject-card:hover {
+    border-color: var(--primary-300);
+    background: var(--primary-50);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.subject-card--add {
+    border-style: dashed;
+    border-color: var(--gray-300);
+    background: var(--gray-50);
+}
+
+.subject-card--add:hover {
+    border-color: var(--primary-400);
+    background: var(--primary-50);
+}
+
+.subject-card-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.subject-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-100);
+    border-radius: var(--radius-md);
+    color: var(--primary-600);
+    font-size: var(--text-lg);
+    flex-shrink: 0;
+}
+
+.subject-card--add .subject-icon {
+    background: var(--gray-200);
+    color: var(--gray-500);
+}
+
+.subject-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.subject-name {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: var(--space-1);
+    line-height: 1.3;
+}
+
+.subject-desc {
+    font-size: var(--text-xs);
+    color: var(--gray-500);
+    margin: 0;
+}
+
+.subject-arrow {
+    color: var(--gray-400);
+    font-size: var(--text-sm);
+    flex-shrink: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--space-8) var(--space-4);
+}
+
+/* 功能区域 */
+.home-functions .card {
+    height: 100%;
+}
+
+.function-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.function-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    background: white;
+    cursor: pointer;
+    transition: all var(--duration-200) var(--ease-out);
+}
+
+.function-card:hover {
+    border-color: var(--primary-300);
+    background: var(--primary-50);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.function-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-100);
+    border-radius: var(--radius-lg);
+    color: var(--primary-600);
+    font-size: var(--text-xl);
+    flex-shrink: 0;
+}
+
+.function-content {
+    flex: 1;
+}
+
+.function-title {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: var(--space-1);
+}
+
+.function-desc {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* 系统信息区域 */
+.system-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--gray-50);
+    border-radius: var(--radius-md);
+}
+
+.info-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-100);
+    border-radius: var(--radius-md);
+    color: var(--primary-600);
+    font-size: var(--text-base);
+    flex-shrink: 0;
+}
+
+.info-content h6 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: var(--space-1);
+}
+
+.info-content p {
+    font-size: var(--text-xs);
+    color: var(--gray-600);
+    margin: 0;
+}
+
+/* 统计信息 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-4);
+    text-align: center;
+}
+
+.stat-item {
+    padding: var(--space-4);
+}
+
+.stat-value {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--primary-600);
+    margin-bottom: var(--space-1);
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    color: var(--gray-600);
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .home-layout {
+        grid-template-columns: 1fr 380px 1fr;
+        gap: var(--space-4);
+    }
+}
+
+@media (max-width: 1024px) {
+    .home-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        gap: var(--space-4);
+        min-height: auto;
+    }
+
+    .subjects-grid {
+        max-height: 300px;
+    }
+
+    .welcome-features {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .home-layout {
+        gap: var(--space-3);
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-3);
+    }
+
+    .welcome-title {
+        font-size: var(--text-xl);
+    }
+
+    .subjects-grid {
+        max-height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-2);
+    }
+
+    .subject-card-content {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-2);
+    }
+
+    .subject-arrow {
+        display: none;
+    }
+
+    .function-card {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-2);
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,34 @@
+{
+    "knowledgebase": {
+        "path": "data/knowledgebase.json",
+        "auto_reload": true,
+        "reload_interval": 300
+    },
+    "api": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": false
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "file": "logs/app.log"
+    },
+    "ai_model": {
+        "type": "ollama",
+        "api_key": "",
+        "model_name": "modelscope.cn/Qwen/Qwen2.5-14B-Instruct-GGUF:Q4_K_M",
+        "assistant_domain": "统计工作实务",
+        "assistant_style": "教师",
+        "enabled_chapters": [
+            "第一章 统计与统计数据",
+            "第二章 统计调查",
+            "第三章 统计整理与显示",
+            "第四章 统计数据的概括性度量",
+            "第五章 时间序列分析",
+            "第六章 统计指数",
+            "第七章 国民经济统计初步",
+            "第八章 统计分析报告的撰写"
+        ]
+    }
+}

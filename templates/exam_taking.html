@@ -1,0 +1,713 @@
+{% extends "base.html" %}
+
+{% block title %}在线考试 - {{ exam_data.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-6">
+    <!-- 考试头部信息 -->
+    <div class="card exam-header-card mb-6">
+        <div class="card-header card-header--simple">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h4 class="font-semibold mb-1">{{ exam_data.title }}</h4>
+                    <div class="text-sm text-gray-600">
+                        <span class="mr-4">学科：{{ exam_data.subject }}</span>
+                        <span class="mr-4">总分：{{ exam_data.totalScore }}分</span>
+                        <span>题目数量：{{ exam_data.questions|length }}</span>
+                    </div>
+                </div>
+                <div class="exam-timer">
+                    <div class="timer-display bg-primary text-white px-4 py-2 rounded-lg font-mono text-lg">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span id="timeRemaining">120:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid--4 gap-6">
+        <!-- 答题进度侧边栏 -->
+        <div class="exam-sidebar">
+            <div class="card">
+                <div class="card-header card-header--simple">
+                    <h6 class="font-semibold">
+                        <i class="fas fa-list-check mr-2"></i>
+                        答题进度
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="progress-summary mb-4">
+                        <div class="text-center">
+                            <div class="progress-circle">
+                                <svg class="progress-ring" width="80" height="80">
+                                    <circle class="progress-ring-circle" stroke="var(--primary-500)" 
+                                            stroke-width="4" fill="transparent" r="36" cx="40" cy="40"/>
+                                </svg>
+                                <div class="progress-text">
+                                    <span id="progressCount">0</span>/<span>{{ exam_data.questions|length }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center text-sm text-gray-600 mt-2">
+                            已完成题目
+                        </div>
+                    </div>
+                    
+                    <div class="question-nav">
+                        {% for question in exam_data.questions %}
+                        <button class="question-nav-btn" data-question="{{ loop.index0 }}" 
+                                onclick="scrollToQuestion({{ loop.index0 }})">
+                            {{ loop.index }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button class="btn btn-success w-full" onclick="submitExam()">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            提交试卷
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要答题区域 -->
+        <div class="exam-content" style="grid-column: span 3;">
+            <div id="questionsContainer">
+                {% for question in exam_data.questions %}
+                <div class="question-card card mb-6" data-question="{{ loop.index0 }}">
+                    <div class="card-body">
+                        <div class="question-header mb-4">
+                            <div class="flex justify-between items-start">
+                                <div class="flex items-center gap-3">
+                                    <span class="question-number">{{ loop.index }}.</span>
+                                    <span class="question-type badge 
+                                        {% if question.type == 'choice' %}bg-primary
+                                        {% elif question.type == 'judge' %}bg-success
+                                        {% else %}bg-warning{% endif %}">
+                                        {% if question.type == 'choice' %}选择题
+                                        {% elif question.type == 'judge' %}判断题
+                                        {% else %}主观题{% endif %}
+                                    </span>
+                                </div>
+                                <span class="question-score text-sm text-gray-500">({{ question.score }}分)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="question-content mb-4">
+                            <p class="font-medium text-gray-800">{{ question.question }}</p>
+                        </div>
+                        
+                        <div class="answer-section">
+                            {% if question.type == 'choice' %}
+                                <div class="choice-options space-y-3">
+                                    {% for option in question.options %}
+                                    <label class="option-label flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <input type="radio" name="question_{{ loop.index0 }}"
+                                               value="{{ ['A', 'B', 'C', 'D', 'E', 'F'][loop.index0] }}" class="form-radio mt-1"
+                                               onchange="saveAnswer({{ loop.index0 }}, this.value)">
+                                        <div class="flex-1">
+                                            <span class="option-letter font-semibold text-primary mr-2">
+                                                {{ ['A', 'B', 'C', 'D', 'E', 'F'][loop.index0] }}.
+                                            </span>
+                                            <span>{{ option }}</span>
+                                        </div>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            {% elif question.type == 'judge' %}
+                                <div class="judge-options flex gap-4">
+                                    <label class="option-label flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <input type="radio" name="question_{{ loop.index0 }}" 
+                                               value="A" class="form-radio"
+                                               onchange="saveAnswer({{ loop.index0 }}, 'A')">
+                                        <span class="font-semibold text-success">正确</span>
+                                    </label>
+                                    <label class="option-label flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <input type="radio" name="question_{{ loop.index0 }}" 
+                                               value="B" class="form-radio"
+                                               onchange="saveAnswer({{ loop.index0 }}, 'B')">
+                                        <span class="font-semibold text-error">错误</span>
+                                    </label>
+                                </div>
+                            {% else %}
+                                <div class="text-answer">
+                                    <textarea class="form-control" rows="6" 
+                                              placeholder="请在此输入您的答案..."
+                                              onchange="saveAnswer({{ loop.index0 }}, this.value)"
+                                              oninput="autoSaveAnswer({{ loop.index0 }}, this.value)"></textarea>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="answer-status mt-3">
+                            <span class="status-indicator" id="status_{{ loop.index0 }}">
+                                <i class="fas fa-circle text-gray-300"></i>
+                                <span class="text-sm text-gray-500">未作答</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 提交确认模态框 -->
+<div class="modal fade" id="submitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning mr-2"></i>
+                    确认提交试卷
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="submit-summary">
+                    <p class="mb-4">您确定要提交试卷吗？提交后将无法修改答案。</p>
+                    <div class="summary-stats grid grid--2 gap-4 p-4 bg-gray-50 rounded-lg">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-primary" id="answeredCount">0</div>
+                            <div class="text-sm text-gray-600">已答题目</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-gray-400" id="unansweredCount">{{ exam_data.questions|length }}</div>
+                            <div class="text-sm text-gray-600">未答题目</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    继续答题
+                </button>
+                <button type="button" class="btn btn-primary" onclick="confirmSubmit()">
+                    确认提交
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 结果显示模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    考试结果
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div id="examResult">
+                    <!-- 结果内容将通过JavaScript动态填充 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="window.location.href='/exam?subject={{ exam_data.subject }}'">
+                    返回考试页面
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 全局变量
+    let examSession = null;
+    let examTimer = null;
+    let autoSaveTimer = null;
+    let answers = {};
+    let timeRemaining = 120 * 60; // 默认120分钟，转换为秒
+
+    // 初始化考试
+    initializeExam();
+
+    async function initializeExam() {
+        try {
+            const studentName = prompt('请输入您的姓名：') || '匿名用户';
+            
+            // 后端已通过路由提供了 session_id
+            const sessionId = '{{ session_id }}';
+
+            // 开始考试会话
+            const response = await fetch('/api/start_exam', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    student_name: studentName
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) { throw new Error(data.error); }
+
+            examSession = data;
+
+            // 获取已保存的答案以实现断点续答
+            await loadSavedAnswers(sessionId);
+
+            startTimer();
+            startAutoSave();
+            initializeQuestionStates();
+
+            showNotification('考试已开始，祝您考试顺利！', 'success');
+
+        } catch (error) {
+            console.error('初始化考试失败:', error);
+            showNotification('初始化考试失败: ' + error.message, 'error');
+            // 可以在此处添加返回上一页或关闭窗口的逻辑
+        }
+    }
+
+    // 新增：加载已保存的答案
+    async function loadSavedAnswers(sessionId) {
+        try {
+            const response = await fetch(`/api/get_saved_answers/${sessionId}`);
+            const data = await response.json();
+
+            if (data.answers) {
+                answers = data.answers;
+                // 遍历答案并填充UI
+                for (const [qIndex, answer] of Object.entries(answers)) {
+                    const questionCard = document.querySelector(`.question-card[data-question="${qIndex}"]`);
+                    if (!questionCard) continue;
+
+                    const questionType = questionCard.querySelector('.question-type').textContent.trim();
+                    
+                    if (questionType.includes('选择题')) {
+                        const radio = questionCard.querySelector(`input[type="radio"][value="${answer}"]`);
+                        if (radio) radio.checked = true;
+                    } else if (questionType.includes('判断题')) {
+                        const radio = questionCard.querySelector(`input[type="radio"][value="${answer}"]`);
+                        if (radio) radio.checked = true;
+                    } else { // 主观题
+                        const textarea = questionCard.querySelector('textarea');
+                        if (textarea) textarea.value = answer;
+                    }
+                    // 更新题目状态为已保存
+                    updateQuestionStatus(qIndex, 'saved');
+                }
+                // 更新整体进度
+                updateProgress();
+            }
+        } catch (error) {
+            console.error('加载已存答案失败:', error);
+            showNotification('无法恢复您之前的答题记录', 'warning');
+        }
+    }
+
+    // 初始化所有题目状态
+    function initializeQuestionStates() {
+        const totalQuestions = {{ exam_data.questions|length }};
+
+        for (let i = 0; i < totalQuestions; i++) {
+            // 设置所有题目的初始状态为"未作答"
+            updateQuestionStatus(i, 'unanswered');
+        }
+
+        // 初始化进度
+        updateProgress();
+
+        console.log(`已初始化 ${totalQuestions} 道题目的状态`);
+    }
+
+    // 启动计时器
+    function startTimer() {
+        const timerDisplay = document.getElementById('timeRemaining');
+
+        examTimer = setInterval(() => {
+            timeRemaining--;
+
+            const hours = Math.floor(timeRemaining / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = timeRemaining % 60;
+
+            const timeString = hours > 0
+                ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            timerDisplay.textContent = timeString;
+
+            // 时间警告
+            if (timeRemaining <= 300 && timeRemaining > 60) { // 最后5分钟
+                timerDisplay.classList.add('timer-warning');
+            } else if (timeRemaining <= 60) { // 最后1分钟
+                timerDisplay.classList.add('timer-danger');
+            }
+
+            // 时间到自动提交
+            if (timeRemaining <= 0) {
+                clearInterval(examTimer);
+                showNotification('考试时间已到，系统将自动提交试卷', 'warning');
+                setTimeout(() => {
+                    confirmSubmit();
+                }, 2000);
+            }
+        }, 1000);
+    }
+
+    // 启动自动保存
+    function startAutoSave() {
+        autoSaveTimer = setInterval(() => {
+            if (Object.keys(answers).length > 0) {
+                saveAllAnswers();
+            }
+        }, 30000); // 每30秒自动保存一次
+    }
+
+    // 保存答案
+    window.saveAnswer = async function(questionIndex, answer) {
+        console.log(`保存答案 - 题目 ${questionIndex + 1}, 答案: "${answer}"`);
+
+        // 验证答案是否有效
+        if (answer === null || answer === undefined) {
+            console.warn(`题目 ${questionIndex + 1} 的答案为空`);
+            return;
+        }
+
+        // 对于文本答案，检查是否为空字符串
+        const trimmedAnswer = typeof answer === 'string' ? answer.trim() : answer;
+        if (trimmedAnswer === '') {
+            // 如果答案为空，从answers对象中移除
+            delete answers[questionIndex];
+            updateQuestionStatus(questionIndex, 'unanswered');
+            updateProgress();
+            return;
+        }
+
+        // 保存答案到本地状态
+        answers[questionIndex] = answer;
+
+        // 立即更新UI状态为"已作答"
+        updateQuestionStatus(questionIndex, 'answered');
+        updateProgress();
+
+        // 立即保存到服务器
+        try {
+            const response = await fetch('/api/save_answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: examSession.session_id,
+                    question_index: questionIndex,
+                    answer: answer
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                updateQuestionStatus(questionIndex, 'saved');
+            } else {
+                updateQuestionStatus(questionIndex, 'error');
+                console.error('服务器返回保存失败:', data);
+            }
+        } catch (error) {
+            console.error('保存答案失败:', error);
+            updateQuestionStatus(questionIndex, 'error');
+        }
+    };
+
+    // 自动保存答案（用于文本输入）
+    let autoSaveTimeouts = {};
+    window.autoSaveAnswer = function(questionIndex, answer) {
+        console.log(`自动保存答案 - 题目 ${questionIndex + 1}, 答案: "${answer}"`);
+
+        // 立即更新本地状态和UI（不等待服务器响应）
+        const trimmedAnswer = typeof answer === 'string' ? answer.trim() : answer;
+
+        if (trimmedAnswer === '') {
+            // 如果答案为空，标记为未作答
+            delete answers[questionIndex];
+            updateQuestionStatus(questionIndex, 'unanswered');
+        } else {
+            // 如果有内容，立即标记为已作答
+            answers[questionIndex] = answer;
+            updateQuestionStatus(questionIndex, 'answered');
+        }
+
+        // 更新进度
+        updateProgress();
+
+        // 清除之前的定时器
+        if (autoSaveTimeouts[questionIndex]) {
+            clearTimeout(autoSaveTimeouts[questionIndex]);
+        }
+
+        // 设置新的定时器，延迟保存到服务器
+        if (trimmedAnswer !== '') {
+            autoSaveTimeouts[questionIndex] = setTimeout(() => {
+                saveAnswerToServer(questionIndex, answer);
+            }, 1000); // 1秒后保存到服务器
+        }
+    };
+
+    // 仅保存到服务器（不更新UI状态）
+    async function saveAnswerToServer(questionIndex, answer) {
+        try {
+            const response = await fetch('/api/save_answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: examSession.session_id,
+                    question_index: questionIndex,
+                    answer: answer
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                updateQuestionStatus(questionIndex, 'saved');
+            } else {
+                updateQuestionStatus(questionIndex, 'error');
+                console.error('服务器返回保存失败:', data);
+            }
+        } catch (error) {
+            console.error('保存答案到服务器失败:', error);
+            updateQuestionStatus(questionIndex, 'error');
+        }
+    }
+
+    // 保存所有答案
+    async function saveAllAnswers() {
+        for (const [questionIndex, answer] of Object.entries(answers)) {
+            try {
+                await fetch('/api/save_answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: examSession.session_id,
+                        question_index: questionIndex,
+                        answer: answer
+                    })
+                });
+            } catch (error) {
+                console.error(`保存第${parseInt(questionIndex) + 1}题答案失败:`, error);
+            }
+        }
+    }
+
+    // 更新题目状态
+    function updateQuestionStatus(questionIndex, status) {
+        const statusElement = document.getElementById(`status_${questionIndex}`);
+        const navButton = document.querySelector(`[data-question="${questionIndex}"]`);
+
+        if (statusElement) {
+            const icon = statusElement.querySelector('i');
+            const text = statusElement.querySelector('span');
+
+            // 清除导航按钮的所有状态类
+            if (navButton) {
+                navButton.classList.remove('answered', 'saved', 'error');
+            }
+
+            switch (status) {
+                case 'unanswered':
+                    icon.className = 'fas fa-circle text-gray-300';
+                    text.textContent = '未作答';
+                    // 不添加任何状态类，保持默认样式
+                    break;
+                case 'answered':
+                    icon.className = 'fas fa-circle text-warning';
+                    text.textContent = '已作答';
+                    navButton?.classList.add('answered');
+                    break;
+                case 'saved':
+                    icon.className = 'fas fa-check-circle text-success';
+                    text.textContent = '已保存';
+                    navButton?.classList.add('saved');
+                    break;
+                case 'error':
+                    icon.className = 'fas fa-exclamation-circle text-error';
+                    text.textContent = '保存失败';
+                    navButton?.classList.add('error');
+                    break;
+                default:
+                    console.warn(`未知的题目状态: ${status}`);
+                    break;
+            }
+        } else {
+            console.warn(`找不到题目 ${questionIndex + 1} 的状态元素`);
+        }
+    }
+
+    // 更新答题进度
+    function updateProgress() {
+        const totalQuestions = {{ exam_data.questions|length }};
+        const answeredCount = Object.keys(answers).length;
+        const progressPercentage = (answeredCount / totalQuestions) * 100;
+
+        // 更新进度圆环
+        const progressCircle = document.querySelector('.progress-ring-circle');
+        const circumference = 2 * Math.PI * 36; // r=36
+        const strokeDasharray = circumference;
+        const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+
+        progressCircle.style.strokeDasharray = strokeDasharray;
+        progressCircle.style.strokeDashoffset = strokeDashoffset;
+
+        // 更新进度文本
+        document.getElementById('progressCount').textContent = answeredCount;
+
+        // 更新提交模态框中的统计
+        document.getElementById('answeredCount').textContent = answeredCount;
+        document.getElementById('unansweredCount').textContent = totalQuestions - answeredCount;
+    }
+
+    // 滚动到指定题目
+    window.scrollToQuestion = function(questionIndex) {
+        const questionCard = document.querySelector(`[data-question="${questionIndex}"]`);
+        if (questionCard) {
+            questionCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
+    // 提交试卷
+    window.submitExam = function() {
+        const modal = new bootstrap.Modal(document.getElementById('submitModal'));
+        updateProgress(); // 更新统计数据
+        modal.show();
+    };
+
+    // 确认提交
+    window.confirmSubmit = async function() {
+        try {
+            // 隐藏提交确认模态框
+            const submitModal = bootstrap.Modal.getInstance(document.getElementById('submitModal'));
+            if (submitModal) {
+                submitModal.hide();
+            }
+
+            // 停止计时器和自动保存
+            if (examTimer) clearInterval(examTimer);
+            if (autoSaveTimer) clearInterval(autoSaveTimer);
+
+            // 最后一次保存所有答案
+            await saveAllAnswers();
+
+            showNotification('正在提交试卷，请稍候...', 'info');
+
+            // 提交考试
+            const response = await fetch('/api/submit_exam', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id: examSession.session_id
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // 显示结果
+            showExamResult(data.score_result);
+
+        } catch (error) {
+            console.error('提交考试失败:', error);
+            showNotification('提交考试失败: ' + error.message, 'error');
+        }
+    };
+
+    // 显示考试结果
+    function showExamResult(scoreResult) {
+        const resultContainer = document.getElementById('examResult');
+        const percentage = scoreResult.percentage;
+        let gradeClass = 'text-success';
+        let gradeText = '优秀';
+
+        if (percentage < 60) {
+            gradeClass = 'text-error';
+            gradeText = '不及格';
+        } else if (percentage < 70) {
+            gradeClass = 'text-warning';
+            gradeText = '及格';
+        } else if (percentage < 80) {
+            gradeClass = 'text-info';
+            gradeText = '良好';
+        } else if (percentage < 90) {
+            gradeClass = 'text-success';
+            gradeText = '优秀';
+        }
+
+        resultContainer.innerHTML = `
+            <div class="result-summary text-center mb-6">
+                <div class="score-display mb-4">
+                    <div class="text-6xl font-bold ${gradeClass}">${scoreResult.total_score}</div>
+                    <div class="text-2xl text-gray-600">/ ${scoreResult.full_score} 分</div>
+                    <div class="text-xl ${gradeClass} mt-2">${percentage}% - ${gradeText}</div>
+                </div>
+            </div>
+
+            <div class="result-details">
+                <h6 class="font-semibold mb-3">答题详情</h6>
+                <div class="question-results space-y-3">
+                    ${scoreResult.question_results.map((result, index) => `
+                        <div class="result-item p-3 border rounded-lg ${result.is_correct ? 'border-success bg-success-50' : 'border-error bg-error-50'}">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-medium">第${index + 1}题</span>
+                                <span class="badge ${result.is_correct ? 'bg-success' : 'bg-error'}">
+                                    ${result.earned_score}/${result.full_score}分
+                                </span>
+                            </div>
+                            <div class="text-sm text-gray-600 mb-2">${result.question}</div>
+                            <div class="text-sm">
+                                <div class="mb-1">
+                                    <strong>您的答案：</strong>
+                                    <span class="${result.is_correct ? 'text-success' : 'text-error'}">${result.user_answer || '未作答'}</span>
+                                </div>
+                                <div>
+                                    <strong>正确答案：</strong>
+                                    <span class="text-success">${result.correct_answer}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+        resultModal.show();
+
+        showNotification('考试已完成！', 'success');
+    }
+
+    // 显示通知
+    function showNotification(message, type) {
+        if (window.UIUtils && typeof window.UIUtils.createNotification === 'function') {
+            window.UIUtils.createNotification(message, type, 3000);
+        } else {
+            alert(message);
+        }
+    }
+
+    // 页面离开前确认
+    window.addEventListener('beforeunload', function(e) {
+        if (examSession && Object.keys(answers).length > 0) {
+            e.preventDefault();
+            e.returnValue = '您有未提交的答案，确定要离开吗？';
+            return e.returnValue;
+        }
+    });
+});
+</script>
+{% endblock %}

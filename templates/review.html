@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}试卷审批{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 试卷上传区域 -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">试卷上传</h5>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" class="mb-3">
+                    <div class="mb-3">
+                        <label for="examFile" class="form-label">选择试卷文件</label>
+                        <input type="file" class="form-control" id="examFile" accept=".txt">
+                        <div class="form-text">支持 TXT 格式的试卷文件</div>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" onclick="uploadExam()">上传并批改</button>
+                </form>
+
+                <div class="upload-preview mt-3 d-none">
+                    <h6>试卷信息</h6>
+                    <div id="examInfo" class="small">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 知识点掌握度分析 -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">知识点掌握度分析</h5>
+            </div>
+            <div class="card-body">
+                <div id="knowledgeAnalysis">
+                    <div class="text-center text-muted">
+                        上传试卷后显示分析结果
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批改结果和建议 -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">批改结果与学习建议</h5>
+            </div>
+            <div class="card-body">
+                <div id="reviewResult">
+                    <div class="text-center text-muted">
+                        上传试卷后显示批改结果
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentReview = null;
+
+function uploadExam() {
+    const fileInput = document.getElementById('examFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('请选择试卷文件！');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('subject', '{{ subject }}');
+    
+    // 显示加载状态
+    document.getElementById('reviewResult').innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">正在批改试卷...</div></div>';
+    document.getElementById('knowledgeAnalysis').innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+    
+    // 上传并获取批改结果
+    fetch('/api/review_exam', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        currentReview = data;
+        displayReviewResult(data);
+        displayKnowledgeAnalysis(data.knowledge_analysis);
+        showExamInfo(data.exam_info);
+        document.querySelector('.upload-preview').classList.remove('d-none');
+    })
+    .catch(error => {
+        document.getElementById('reviewResult').innerHTML = '<div class="text-center text-danger">批改失败，请重试</div>';
+        document.getElementById('knowledgeAnalysis').innerHTML = '<div class="text-center text-danger">分析失败</div>';
+    });
+}
+
+function displayReviewResult(data) {
+    const resultDiv = document.getElementById('reviewResult');
+    let html = `
+        <div class="review-summary mb-4">
+            <h5>总评</h5>
+            <div class="alert alert-info">
+                <strong>得分：${data.total_score} / ${data.full_score}</strong>
+                <div class="mt-2">${data.overall_comment}</div>
+            </div>
+        </div>
+        
+        <div class="review-details">
+            <h5>详细批改</h5>
+    `;
+    
+    data.questions.forEach((question, index) => {
+        html += `
+            <div class="question-review mb-4">
+                <div class="question-header d-flex justify-content-between align-items-start">
+                    <div class="question-title">
+                        <strong>第 ${index + 1} 题</strong>
+                        <span class="badge ${question.score === question.full_score ? 'bg-success' : 'bg-danger'} ms-2">
+                            ${question.score} / ${question.full_score}
+                        </span>
+                    </div>
+                </div>
+                <div class="question-content mt-2">
+                    <div class="mb-2">${question.content}</div>
+                    <div class="student-answer mb-2">
+                        <strong>答案：</strong>
+                        <div class="ms-3">${question.answer}</div>
+                    </div>
+                    <div class="correction-comment">
+                        <strong>点评：</strong>
+                        <div class="ms-3">${question.comment}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        
+        <div class="learning-suggestions mt-4">
+            <h5>学习建议</h5>
+            <div class="alert alert-primary">
+                ${data.learning_suggestions}
+            </div>
+        </div>
+    `;
+    
+    resultDiv.innerHTML = html;
+}
+
+function displayKnowledgeAnalysis(analysis) {
+    const analysisDiv = document.getElementById('knowledgeAnalysis');
+    let html = '<div class="knowledge-points">';
+    
+    Object.entries(analysis).forEach(([point, score]) => {
+        const percentage = score * 100;
+        const colorClass = percentage >= 80 ? 'bg-success' : 
+                          percentage >= 60 ? 'bg-warning' : 'bg-danger';
+        
+        html += `
+            <div class="knowledge-point mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <small>${point}</small>
+                    <small>${percentage}%</small>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar ${colorClass}" 
+                         role="progressbar" 
+                         style="width: ${percentage}%" 
+                         aria-valuenow="${percentage}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    analysisDiv.innerHTML = html;
+}
+
+function showExamInfo(info) {
+    const infoDiv = document.getElementById('examInfo');
+    infoDiv.innerHTML = `
+        <div class="mb-2">
+            <strong>试卷名称：</strong>${info.title}
+        </div>
+        <div class="mb-2">
+            <strong>题目数量：</strong>${info.question_count}
+        </div>
+        <div>
+            <strong>总分：</strong>${info.full_score}
+        </div>
+    `;
+}
+</script>
+
+<style>
+.question-review {
+    border-left: 3px solid #dee2e6;
+    padding-left: 1rem;
+}
+
+.knowledge-points {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.correction-comment {
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+</style>
+{% endblock %} 

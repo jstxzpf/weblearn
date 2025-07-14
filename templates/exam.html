@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}考试 - {{ subject }}{% endblock %}
+
+{% block content %}
+<div class="container mt-6">
+    <div class="grid grid--auto gap-6">
+        <!-- 考试配置区域 -->
+        <div class="card">
+            <div class="card-header card-header--simple">
+                <h5 class="font-semibold">
+                    <i class="fas fa-cog mr-2"></i>
+                    考试配置
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- 章节选择 -->
+                <div class="form-group">
+                    <label class="form-label">选择考试章节</label>
+                    <div id="chapterList" class="chapter-list">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <span>加载章节中...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 题目配置 -->
+                <div class="form-group">
+                    <label class="form-label">题目数量</label>
+                    <div class="grid grid--2 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-600">选择题</label>
+                            <input type="number" class="form-control" id="choiceCount" value="5" min="0" max="20">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600">判断题</label>
+                            <input type="number" class="form-control" id="judgeCount" value="3" min="0" max="10">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 难度选择 -->
+                <div class="form-group">
+                    <label class="form-label">考试难度</label>
+                    <div class="btn-group w-full">
+                        <button type="button" class="btn btn-outline-primary difficulty-btn active" data-difficulty="easy">
+                            <i class="fas fa-seedling mr-1"></i>简单
+                        </button>
+                        <button type="button" class="btn btn-outline-primary difficulty-btn" data-difficulty="medium">
+                            <i class="fas fa-balance-scale mr-1"></i>中等
+                        </button>
+                        <button type="button" class="btn btn-outline-primary difficulty-btn" data-difficulty="hard">
+                            <i class="fas fa-fire mr-1"></i>困难
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 生成按钮 -->
+                <div class="mt-6">
+                    <button class="btn btn-primary btn--lg w-full" onclick="generateExam()">
+                        <i class="fas fa-magic mr-2"></i>
+                        生成智能试卷
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 试卷预览区域 -->
+        <div class="card exam-preview" style="grid-column: span 2;">
+            <div class="card-header card-header--simple flex justify-between items-center">
+                <h5 class="font-semibold">
+                    <i class="fas fa-file-alt mr-2"></i>
+                    试卷预览
+                </h5>
+                <div class="flex gap-2">
+                    <button id="startExamBtn" class="btn btn--sm btn-primary" onclick="startExam()" style="display: none;">
+                        <i class="fas fa-play mr-1"></i>
+                        开始考试
+                    </button>
+                    <button id="saveBtn" class="btn btn--sm btn-success" onclick="saveExam()" style="display: none;">
+                        <i class="fas fa-save mr-1"></i>
+                        保存试卷
+                    </button>
+                    <button id="exportBtn" class="btn btn--sm btn-outline-primary" onclick="exportExam()" style="display: none;">
+                        <i class="fas fa-download mr-1"></i>
+                        导出
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="examPreview">
+                    <div class="text-center text-gray-500 p-12">
+                        <i class="fas fa-clipboard-list text-5xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">智能试卷生成</h3>
+                        <p>配置考试参数后，AI将为您生成个性化试卷</p>
+                        <div class="mt-6">
+                            <div class="grid grid--3 gap-4 text-center">
+                                <div class="p-4">
+                                    <i class="fas fa-robot text-2xl mb-2 text-primary"></i>
+                                    <p class="text-sm">AI智能出题</p>
+                                </div>
+                                <div class="p-4">
+                                    <i class="fas fa-chart-line text-2xl mb-2 text-primary"></i>
+                                    <p class="text-sm">难度自适应</p>
+                                </div>
+                                <div class="p-4">
+                                    <i class="fas fa-bullseye text-2xl mb-2 text-primary"></i>
+                                    <p class="text-sm">知识点覆盖</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 生成进度模态框 -->
+<div class="modal fade" id="progressModal" tabindex="-1" aria-labelledby="progressModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="progressModalLabel">
+                    <i class="fas fa-magic mr-2"></i>
+                    AI正在生成试卷
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="progressText" class="text-center">分析知识点结构...</div>
+                <div class="mt-4 text-center">
+                    <div class="grid grid--2 gap-4 text-sm text-gray-600">
+                        <div>
+                            <i class="fas fa-brain mr-1"></i>
+                            智能分析
+                        </div>
+                        <div>
+                            <i class="fas fa-cogs mr-1"></i>
+                            生成题目
+                        </div>
+                        <div>
+                            <i class="fas fa-check-circle mr-1"></i>
+                            质量检查
+                        </div>
+                        <div>
+                            <i class="fas fa-file-alt mr-1"></i>
+                            格式化输出
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/exam.js') }}"></script>
+{% endblock %}
